@@ -155,13 +155,13 @@ const CategoryChart = ({ transactions }) => {
   );
 };
 
-const Calendar = ({ transactions, selectedDate, onSelectDate, currentDate, onPrevMonth, onNextMonth }) => {
+const Calendar = ({ transactions, selectedDate, onSelectDate, currentDate, onPrevMonth, onNextMonth, onToday }) => {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  
+
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 = Sunday
-  
+
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   const activeDates = useMemo(() => {
@@ -191,6 +191,12 @@ const Calendar = ({ transactions, selectedDate, onSelectDate, currentDate, onPre
         </div>
         <div className="flex gap-2">
           <button
+            onClick={onToday}
+            className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition-colors"
+          >
+            Today
+          </button>
+          <button
             onClick={() => onSelectDate(null)}
             className="text-xs text-slate-500 hover:text-emerald-600 font-medium"
           >
@@ -202,7 +208,7 @@ const Calendar = ({ transactions, selectedDate, onSelectDate, currentDate, onPre
         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
           <div key={i} className="text-center text-xs text-slate-400 py-1">{d}</div>
         ))}
-        
+
         {[...Array(firstDayOfMonth)].map((_, i) => <div key={`empty-${i}`} />)}
 
         {days.map(day => {
@@ -268,6 +274,11 @@ export default function FinanceApp() {
 
   const handleNextMonth = () => {
     setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    setSelectedDate(null);
+  };
+
+  const handleToday = () => {
+    setCurrentDate(new Date());
     setSelectedDate(null);
   };
 
@@ -373,6 +384,7 @@ export default function FinanceApp() {
                 currentDate={currentDate}
                 onPrevMonth={handlePrevMonth}
                 onNextMonth={handleNextMonth}
+                onToday={handleToday}
               />
             </Card>
           </div>
