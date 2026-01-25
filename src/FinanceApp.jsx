@@ -289,7 +289,15 @@ export default function FinanceApp() {
   };
 
   const totals = useMemo(() => {
-    return transactions.reduce((acc, curr) => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    const monthTransactions = transactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getFullYear() === year && d.getMonth() === month;
+    });
+
+    return monthTransactions.reduce((acc, curr) => {
       if (curr.type === 'income') {
         acc.income += curr.amount;
       } else {
@@ -297,9 +305,19 @@ export default function FinanceApp() {
       }
       return acc;
     }, { income: 0, expenses: 0 });
-  }, [transactions]);
+  }, [transactions, currentDate]);
 
   const balance = totals.income - totals.expenses;
+
+  // Month-filtered transactions for CategoryChart
+  const monthTransactions = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    return transactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getFullYear() === year && d.getMonth() === month;
+    });
+  }, [transactions, currentDate]);
 
   // Handlers
   const handleAddTransaction = (e) => {
@@ -380,7 +398,7 @@ export default function FinanceApp() {
               <ProgressBar current={totals.expenses} max={BUDGET_LIMIT} />
             </Card>
             <Card>
-              <CategoryChart transactions={transactions} />
+              <CategoryChart transactions={monthTransactions} />
             </Card>
             <Card>
               <Calendar
