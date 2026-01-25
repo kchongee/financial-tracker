@@ -38,6 +38,12 @@ const INITIAL_TRANSACTIONS = [
   { id: 8, date: '2026-01-18', amount: 60, category: 'transport', type: 'expense', description: 'Uber Rides' },
   { id: 9, date: '2026-01-20', amount: 500, category: 'income', type: 'income', description: 'Freelance Project' },
   { id: 10, date: '2026-01-22', amount: 90, category: 'fun', type: 'expense', description: 'Concert Tickets' },
+  // Previous Month (Dec 2025)
+  { id: 11, date: '2025-12-25', amount: 150, category: 'fun', type: 'expense', description: 'Christmas Gifts' },
+  { id: 12, date: '2025-12-31', amount: 200, category: 'food', type: 'expense', description: 'NYE Party Supplies' },
+  // Next Month (Feb 2026)
+  { id: 13, date: '2026-02-01', amount: 3500, category: 'income', type: 'income', description: 'Monthly Salary' },
+  { id: 14, date: '2026-02-14', amount: 120, category: 'fun', type: 'expense', description: 'Valentine\'s Dinner' },
 ];
 
 // --- Helper Components ---
