@@ -16,16 +16,40 @@ import {
 
 // --- Constants & Mock Data ---
 
-const BUDGET_LIMIT = 2500;
-
 const CATEGORIES = [
   { id: 'housing', name: 'Housing', color: 'bg-blue-500' },
   { id: 'food', name: 'Food', color: 'bg-emerald-500' },
   { id: 'transport', name: 'Transport', color: 'bg-amber-500' },
   { id: 'fun', name: 'Fun', color: 'bg-rose-500' },
   { id: 'utilities', name: 'Utilities', color: 'bg-cyan-500' },
+  { id: 'education', name: 'Education', color: 'bg-purple-500' },
+  { id: 'savings', name: 'Savings', color: 'bg-green-500' },
+  { id: 'investments', name: 'Investments', color: 'bg-indigo-500' },
+  { id: 'giving', name: 'Giving', color: 'bg-pink-500' },
   { id: 'income', name: 'Income', color: 'bg-slate-500' }, // For income transactions
 ];
+
+// 6 Jar Method Configuration
+const JAR_CONFIG = [
+  { id: 'necessities', name: 'Necessities', percentage: 0.55, color: 'bg-blue-500' },
+  { id: 'financial_freedom', name: 'Financial Freedom', percentage: 0.10, color: 'bg-indigo-500' },
+  { id: 'education', name: 'Education', percentage: 0.10, color: 'bg-purple-500' },
+  { id: 'long_term_savings', name: 'Long-Term Savings', percentage: 0.10, color: 'bg-green-500' },
+  { id: 'play', name: 'Play', percentage: 0.10, color: 'bg-rose-500' },
+  { id: 'give', name: 'Give', percentage: 0.05, color: 'bg-pink-500' },
+];
+
+const CATEGORY_TO_JAR_MAPPING = {
+  housing: 'necessities',
+  food: 'necessities',
+  transport: 'necessities',
+  utilities: 'necessities',
+  fun: 'play',
+  education: 'education',
+  savings: 'long_term_savings',
+  investments: 'financial_freedom',
+  giving: 'give',
+};
 
 const INITIAL_TRANSACTIONS = [
   { id: 1, date: '2026-01-01', amount: 3500, category: 'income', type: 'income', description: 'Monthly Salary' },
@@ -79,17 +103,17 @@ const SummaryCard = ({ title, amount, type, icon: Icon }) => {
   );
 };
 
-const ProgressBar = ({ current, max }) => {
-  const percentage = Math.min((current / max) * 100, 100);
+const ProgressBar = ({ current, max, label = "Monthly Budget" }) => {
+  const percentage = max > 0 ? Math.min((current / max) * 100, 100) : 0;
   const remaining = max - current;
   const isOverBudget = remaining < 0;
 
   return (
     <div className="space-y-2">
       <div className="flex justify-between text-sm">
-        <span className="font-medium text-slate-700">Monthly Budget</span>
+        <span className="font-medium text-slate-700">{label}</span>
         <span className={isOverBudget ? 'text-rose-600 font-bold' : 'text-slate-500'}>
-          {isOverBudget ? 'Over Budget' : `${Math.round(percentage)}% Used`}
+          {max > 0 ? (isOverBudget ? 'Over Budget' : `${Math.round(percentage)}% Used`) : 'No Budget'}
         </span>
       </div>
       <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
@@ -154,6 +178,97 @@ const CategoryChart = ({ transactions }) => {
         {expensesByCategory.length === 0 && (
           <div className="text-center py-8 text-slate-400 text-sm">
             No expenses yet
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const JarAllocation = ({ monthlyIncome, transactions }) => {
+  const jarAllocations = useMemo(() => {
+    // Calculate spending per jar and track category breakdowns
+    const jarData = {};
+    JAR_CONFIG.forEach(jar => {
+      jarData[jar.id] = { total: 0, categories: {} };
+    });
+
+    transactions
+      .filter(t => t.type === 'expense')
+      .forEach(t => {
+        const jarId = CATEGORY_TO_JAR_MAPPING[t.category];
+        if (jarId) {
+          jarData[jarId].total += t.amount;
+          jarData[jarId].categories[t.category] = (jarData[jarId].categories[t.category] || 0) + t.amount;
+        }
+      });
+
+    return JAR_CONFIG.map(jar => {
+      const target = monthlyIncome * jar.percentage;
+      const current = jarData[jar.id].total || 0;
+      const percentage = target > 0 ? (current / target) * 100 : 0;
+      const isOver = current > target;
+
+      // Convert categories object to array for rendering
+      const categoryBreakdown = Object.entries(jarData[jar.id].categories).map(([catId, amount]) => ({
+        id: catId,
+        name: CATEGORIES.find(c => c.id === catId)?.name || catId,
+        amount,
+      }));
+
+      return {
+        ...jar,
+        target,
+        current,
+        percentage: Math.min(percentage, 100),
+        isOver,
+        categories: categoryBreakdown,
+      };
+    });
+  }, [monthlyIncome, transactions]);
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-medium text-slate-700 flex items-center gap-2">
+        <PieChart size={16} />
+        6 Jar Allocation
+      </h3>
+      <div className="space-y-3">
+        {jarAllocations.map(jar => (
+          <div key={jar.id}>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-slate-600 font-medium">{jar.name}</span>
+              <span className={jar.isOver ? 'text-rose-600 font-bold' : 'text-slate-500'}>
+                ${jar.current.toLocaleString()} / ${jar.target.toLocaleString()}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full ${jar.isOver ? 'bg-rose-500' : jar.color} rounded-full transition-all duration-300`}
+                  style={{ width: `${jar.percentage}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-slate-400 w-8 text-right">
+                {Math.round(jar.percentage)}%
+              </span>
+            </div>
+            {/* Subcategory breakdown */}
+            {jar.categories.length > 0 && (
+              <div className="ml-3 space-y-1">
+                {jar.categories.map(cat => (
+                  <div key={cat.id} className="flex justify-between text-[11px] text-slate-500">
+                    <span>• {cat.name}</span>
+                    <span>${cat.amount.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+        {monthlyIncome === 0 && (
+          <div className="text-center py-4 text-slate-400 text-sm">
+            No income this month
           </div>
         )}
       </div>
@@ -250,6 +365,7 @@ export default function FinanceApp() {
   const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
   const [selectedDate, setSelectedDate] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date('2026-01-01')); // Start with mock data month
+  const [activeTab, setActiveTab] = useState('category');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [newTx, setNewTx] = useState({
     amount: '',
@@ -308,6 +424,9 @@ export default function FinanceApp() {
   }, [transactions, currentDate]);
 
   const balance = totals.income - totals.expenses;
+
+  // Dynamic budget based on 80% of income (Necessities + Play + Education + Give)
+  const dynamicBudget = totals.income * 0.80;
 
   // Month-filtered transactions for CategoryChart
   const monthTransactions = useMemo(() => {
@@ -395,10 +514,35 @@ export default function FinanceApp() {
           {/* Left Column: Stats & Calendar */}
           <div className="space-y-6">
             <Card>
-              <ProgressBar current={totals.expenses} max={BUDGET_LIMIT} />
+              <ProgressBar current={totals.expenses} max={dynamicBudget} label="Spending Allocation (80%)" />
             </Card>
             <Card>
-              <CategoryChart transactions={monthTransactions} />
+              <div className="flex p-1 bg-slate-100 rounded-lg mb-6">
+                <button
+                  onClick={() => setActiveTab('category')}
+                  className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === 'category'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                  By Category
+                </button>
+                <button
+                  onClick={() => setActiveTab('jars')}
+                  className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === 'jars'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                  6 Jars
+                </button>
+              </div>
+
+              {activeTab === 'category' ? (
+                <CategoryChart transactions={monthTransactions} />
+              ) : (
+                <JarAllocation monthlyIncome={totals.income} transactions={monthTransactions} />
+              )}
             </Card>
             <Card>
               <Calendar
