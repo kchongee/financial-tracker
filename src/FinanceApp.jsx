@@ -9,7 +9,9 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   PieChart,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 // --- Constants & Mock Data ---
@@ -153,18 +155,40 @@ const CategoryChart = ({ transactions }) => {
   );
 };
 
-const Calendar = ({ transactions, selectedDate, onSelectDate }) => {
-  const daysInMonth = 31; // Simplified for Jan 2026
+const Calendar = ({ transactions, selectedDate, onSelectDate, currentDate, onPrevMonth, onNextMonth }) => {
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 = Sunday
+  
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   const activeDates = useMemo(() => {
-    return new Set(transactions.map(t => new Date(t.date).getDate()));
-  }, [transactions]);
+    return new Set(
+      transactions
+        .filter(t => {
+          const d = new Date(t.date);
+          return d.getMonth() === month && d.getFullYear() === year;
+        })
+        .map(t => new Date(t.date).getDate())
+    );
+  }, [transactions, month, year]);
+
+  const monthName = currentDate.toLocaleString('default', { month: 'long' });
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-slate-900">January 2026</h3>
+        <div className="flex items-center gap-2">
+          <button onClick={onPrevMonth} className="p-1 hover:bg-slate-100 rounded-full text-slate-500">
+            <ChevronLeft size={20} />
+          </button>
+          <h3 className="font-semibold text-slate-900">{monthName} {year}</h3>
+          <button onClick={onNextMonth} className="p-1 hover:bg-slate-100 rounded-full text-slate-500">
+            <ChevronRight size={20} />
+          </button>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => onSelectDate(null)}
@@ -178,11 +202,11 @@ const Calendar = ({ transactions, selectedDate, onSelectDate }) => {
         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
           <div key={i} className="text-center text-xs text-slate-400 py-1">{d}</div>
         ))}
-        {/* Offset for Jan 1 2026 (Thursday) */}
-        {[...Array(4)].map((_, i) => <div key={`empty-${i}`} />)}
+        
+        {[...Array(firstDayOfMonth)].map((_, i) => <div key={`empty-${i}`} />)}
 
         {days.map(day => {
-          const dateStr = `2026-01-${String(day).padStart(2, '0')}`;
+          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const isSelected = selectedDate === dateStr;
           const hasActivity = activeDates.has(day);
 
@@ -213,6 +237,7 @@ const Calendar = ({ transactions, selectedDate, onSelectDate }) => {
 export default function FinanceApp() {
   const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [currentDate, setCurrentDate] = useState(new Date('2026-01-01')); // Start with mock data month
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [newTx, setNewTx] = useState({
     amount: '',
@@ -224,9 +249,27 @@ export default function FinanceApp() {
 
   // Derived State
   const filteredTransactions = useMemo(() => {
-    if (!selectedDate) return transactions;
-    return transactions.filter(t => t.date === selectedDate);
-  }, [transactions, selectedDate]);
+    if (selectedDate) {
+      return transactions.filter(t => t.date === selectedDate);
+    }
+    // Filter by current month view if no specific date selected
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    return transactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getFullYear() === year && d.getMonth() === month;
+    });
+  }, [transactions, selectedDate, currentDate]);
+
+  const handlePrevMonth = () => {
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    setSelectedDate(null); // Clear selection when changing months
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    setSelectedDate(null);
+  };
 
   const totals = useMemo(() => {
     return transactions.reduce((acc, curr) => {
@@ -276,7 +319,9 @@ export default function FinanceApp() {
               <Wallet className="text-emerald-600" />
               FinanceTracker
             </h1>
-            <p className="text-slate-500 text-sm mt-1">Overview for January 2026</p>
+            <p className="text-slate-500 text-sm mt-1">
+              Overview for {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+            </p>
           </div>
           <button
             onClick={() => setIsFormOpen(true)}
@@ -325,6 +370,9 @@ export default function FinanceApp() {
                 transactions={transactions}
                 selectedDate={selectedDate}
                 onSelectDate={setSelectedDate}
+                currentDate={currentDate}
+                onPrevMonth={handlePrevMonth}
+                onNextMonth={handleNextMonth}
               />
             </Card>
           </div>
@@ -337,6 +385,11 @@ export default function FinanceApp() {
                 {selectedDate && (
                   <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">
                     Filtered: {selectedDate}
+                  </span>
+                )}
+                {!selectedDate && (
+                  <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">
+                    {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                   </span>
                 )}
               </div>
