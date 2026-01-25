@@ -1,16 +1,113 @@
-# React + Vite
+# 💰 Personal Finance Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Welcome to your **Personal Finance Tracker**! This is a modern, single-page web application designed to help you track your income, expenses, and budget.
 
-Currently, two official plugins are available:
+We built this specifically to be easy to understand for **beginner developers**. It uses popular, modern tools but keeps the code simple and readable.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## 🚀 Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Dashboard Overview**: See your total balance, income, and expenses at a glance.
+- **Visual Charts**: A donut chart shows you exactly where your money is going (Rent, Food, Transport, etc.).
+- **Budget Tracking**: A progress bar shows how close you are to your monthly spending limit.
+- **Transaction History**: A clean list of all your recent transactions.
+- **Add New Transaction**: An easy form to add new income or expenses.
+- **Responsive Design**: Looks great on your laptop and your phone!
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🛠️ Tech Stack (What we used)
+
+- **[React](https://react.dev/)**: The library for building the user interface. Think of it as building with LEGO blocks (components).
+- **[Vite](https://vitejs.dev/)**: A tool that runs your project super fast. It's the engine that powers your development server.
+- **[Tailwind CSS](https://tailwindcss.com/)**: A utility-first CSS framework. Instead of writing separate CSS files, we use classes like `text-blue-500` or `p-4` directly in our HTML.
+- **[Lucide React](https://lucide.dev/)**: A library for beautiful, clean icons.
+
+---
+
+## 🏁 Getting Started
+
+Follow these steps to get the project running on your computer.
+
+### 1. Prerequisites
+Make sure you have **Node.js** installed. You can check by running this in your terminal:
+```bash
+node -v
+```
+If you don't have it, download it from [nodejs.org](https://nodejs.org/).
+
+### 2. Install Dependencies
+Open your terminal in this project folder and run:
+```bash
+npm install
+```
+This downloads all the libraries we need (like React and Tailwind) into a `node_modules` folder.
+
+### 3. Run the App
+Start the development server:
+```bash
+npm run dev
+```
+You'll see a link (usually `http://localhost:5173`). Ctrl+Click it to open your app in the browser!
+
+---
+
+## 📂 Project Structure
+
+Here is a simple map of the files in your project:
+
+```text
+finance-tracker/
+├── node_modules/       # All the installed libraries (don't touch this!)
+├── public/             # Static files like images
+├── src/                # ⭐️ YOUR CODE LIVES HERE
+│   ├── assets/         # Images and fonts
+│   ├── FinanceApp.jsx  # The MAIN file containing the entire app logic
+│   ├── main.jsx        # The entry point that mounts React to the HTML
+│   └── index.css       # Global styles and Tailwind setup
+├── index.html          # The main HTML file
+├── package.json        # Project settings and list of dependencies
+└── vite.config.js      # Configuration for Vite
+```
+
+---
+
+## 🧠 Code Walkthrough
+
+The heart of this application is **`src/FinanceApp.jsx`**. Let's break down how it works:
+
+### 1. Data Management (`useState`)
+We use React's `useState` to keep track of data. When this data changes, the screen updates automatically.
+```javascript
+const [transactions, setTransactions] = useState(MOCK_DATA);
+```
+- `transactions`: The current list of money in/out.
+- `setTransactions`: A function we call when we want to add a new transaction.
+
+### 2. The Components
+Instead of one giant block of code, we split the UI into smaller, reusable parts (Components):
+- **`SummaryCard`**: Displays the big numbers (Balance, Income, Expense).
+- **`BudgetProgress`**: The bar showing your spending limit.
+- **`CategoryChart`**: The colorful donut chart.
+- **`TransactionList`**: The list of history items.
+- **`TransactionForm`**: The form to add new items.
+
+### 3. Adding a Transaction
+When you click "Add Transaction":
+1. The `handleAddTransaction` function is called.
+2. It creates a new object with the amount, category, and date.
+3. It updates the `transactions` state.
+4. React notices the change and refreshes the list instantly!
+
+---
+
+## 🧪 Try It Yourself!
+
+Want to practice? Try making these small changes:
+
+1. **Change the Budget**: Go to `FinanceApp.jsx` and find `const BUDGET_LIMIT = 2500;`. Change it to `5000` and see the progress bar update.
+2. **New Category**: Add a new category like "Gaming" to the `CATEGORIES` list.
+3. **Color Tweak**: In `SummaryCard`, change `bg-blue-500` to `bg-purple-500` to change the icon color.
+
+Happy Coding! 🚀
