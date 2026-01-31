@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
-
-// Hooks
-import { useTransactions } from './hooks/useTransactions';
+import { useFinanceStore, selectFilteredTransactions, selectMonthTransactions } from './store/useFinanceStore';
 import { useFinanceCalculations } from './hooks/useFinanceCalculations';
 
 // Components
@@ -17,8 +15,27 @@ import { TransactionList } from './components/TransactionList';
 import { TransactionForm } from './components/TransactionForm';
 
 export default function FinanceApp() {
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const {
+    currentDate,
+    selectedDate,
+    loading,
+    categories,
+    jarConfig,
+    categoryToJarMapping,
+    fetchTransactions,
+    addTransaction,
+    deleteTransaction,
+    bulkAddTransactions,
+    setCurrentDate,
+    setSelectedDate,
+    nextMonth,
+    prevMonth,
+    goToday
+  } = useFinanceStore();
+
+  const filteredTransactions = useFinanceStore(selectFilteredTransactions);
+  const monthTransactions = useFinanceStore(selectMonthTransactions);
+
   const [activeTab, setActiveTab] = useState('category');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [newTx, setNewTx] = useState({
@@ -29,15 +46,10 @@ export default function FinanceApp() {
     date: new Date().toISOString().split('T')[0]
   });
 
-  // Custom Hooks
-  const {
-    filteredTransactions,
-    monthTransactions,
-    loading,
-    addTransaction,
-    deleteTransaction,
-    bulkAddTransactions
-  } = useTransactions(currentDate, selectedDate);
+  // Fetch transactions on mount and when currentDate changes
+  React.useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions, currentDate]);
 
   const {
     totals,
@@ -46,23 +58,16 @@ export default function FinanceApp() {
     jarAllocations,
     consumptionExpenses,
     prevMonthData
-  } = useFinanceCalculations(monthTransactions, currentDate);
+  } = useFinanceCalculations(monthTransactions, currentDate, {
+    categories,
+    jarConfig,
+    categoryToJarMapping
+  });
 
   // Handlers
-  const handlePrevMonth = () => {
-    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-    setSelectedDate(null);
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-    setSelectedDate(null);
-  };
-
-  const handleToday = () => {
-    setCurrentDate(new Date());
-    setSelectedDate(null);
-  };
+  const handlePrevMonth = () => prevMonth();
+  const handleNextMonth = () => nextMonth();
+  const handleToday = () => goToday();
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();

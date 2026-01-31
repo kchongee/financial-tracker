@@ -1,16 +1,17 @@
-import { supabase } from '../supabaseClient';
+import { supabase } from '../supabaseClient.js';
+import type { Transaction } from '../types/index.js';
 
 export const transactionService = {
-  async fetchAll() {
+  async fetchAll(): Promise<Transaction[]> {
     const { data, error } = await supabase
       .from('transactions')
       .select('*')
       .order('date', { ascending: false });
     if (error) throw error;
-    return data || [];
+    return (data as Transaction[]) || [];
   },
 
-  async fetchRange(startDate, endDate) {
+  async fetchRange(startDate: string, endDate: string): Promise<Transaction[]> {
     const { data, error } = await supabase
       .from('transactions')
       .select('*')
@@ -18,19 +19,19 @@ export const transactionService = {
       .lte('date', endDate)
       .order('date', { ascending: false });
     if (error) throw error;
-    return data || [];
+    return (data as Transaction[]) || [];
   },
 
-  async add(transaction) {
+  async add(transaction: Omit<Transaction, 'id'>): Promise<Transaction> {
     const { data, error } = await supabase
       .from('transactions')
       .insert([transaction])
       .select();
     if (error) throw error;
-    return data[0];
+    return data[0] as Transaction;
   },
 
-  async delete(id) {
+  async delete(id: number): Promise<void> {
     const { error } = await supabase
       .from('transactions')
       .delete()
@@ -38,12 +39,12 @@ export const transactionService = {
     if (error) throw error;
   },
 
-  async bulkAdd(transactions) {
+  async bulkAdd(transactions: Omit<Transaction, 'id'>[]): Promise<Transaction[]> {
     const { data, error } = await supabase
       .from('transactions')
       .insert(transactions)
       .select();
     if (error) throw error;
-    return data;
+    return (data as Transaction[]) || [];
   }
 };

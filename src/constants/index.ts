@@ -1,4 +1,6 @@
-export const CATEGORIES = [
+import type { Category, Jar, CategoryMapping } from '../types/index.js';
+
+export const CATEGORIES: Category[] = [
   { id: 'housing', name: 'Housing', color: 'bg-blue-500' },
   { id: 'food', name: 'Food', color: 'bg-emerald-500' },
   { id: 'transport', name: 'Transport', color: 'bg-amber-500' },
@@ -12,7 +14,7 @@ export const CATEGORIES = [
   { id: 'income', name: 'Income', color: 'bg-slate-500' },
 ];
 
-export const JAR_CONFIG = [
+export const JAR_CONFIG: Jar[] = [
   { id: 'necessities', name: 'Necessities', percentage: 0.40, color: 'bg-blue-500' },
   { id: 'investments', name: 'Investments (INV)', percentage: 0.22, color: 'bg-indigo-500' },
   { id: 'long_term_savings', name: 'Long-Term Savings (LTSS)', percentage: 0.11, color: 'bg-green-500' },
@@ -22,7 +24,7 @@ export const JAR_CONFIG = [
   { id: 'buffer', name: 'Buffer', percentage: 0.06, color: 'bg-amber-500' },
 ];
 
-export const CATEGORY_TO_JAR_MAPPING = {
+export const CATEGORY_TO_JAR_MAPPING: CategoryMapping = {
   housing: 'necessities',
   food: 'necessities',
   transport: 'necessities',

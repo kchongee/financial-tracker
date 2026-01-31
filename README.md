@@ -17,12 +17,15 @@ We built this specifically to be easy to understand for **beginner developers**.
 
 ---
 
-## 🛠️ Tech Stack (What we used)
+## 🛠️ Tech Stack
 
-- **[React](https://react.dev/)**: The library for building the user interface. Think of it as building with LEGO blocks (components).
-- **[Vite](https://vitejs.dev/)**: A tool that runs your project super fast. It's the engine that powers your development server.
-- **[Tailwind CSS](https://tailwindcss.com/)**: A utility-first CSS framework. Instead of writing separate CSS files, we use classes like `text-blue-500` or `p-4` directly in our HTML.
-- **[Lucide React](https://lucide.dev/)**: A library for beautiful, clean icons.
+For a detailed breakdown of the internal tools and libraries used, see our **[Technology Stack](docs/tech_stack.md)** documentation.
+
+- **[React](https://react.dev/)**: The UI library.
+- **[Supabase](https://supabase.com/)**: The backend and database.
+- **[Tailwind CSS](https://tailwindcss.com/)**: The styling framework.
+- **[Vite](https://vitejs.dev/)**: The build tool.
+- **[Lucide React](https://lucide.dev/)**: Icon set.
 
 ---
 
@@ -55,20 +58,22 @@ You'll see a link (usually `http://localhost:5173`). Ctrl+Click it to open your 
 
 ## 📂 Project Structure
 
-Here is a simple map of the files in your project:
+Here is a technical overview of how the app is organized. See our **[Architecture Documentation](docs/architecture.md)** for details.
 
 ```text
 finance-tracker/
-├── node_modules/       # All the installed libraries (don't touch this!)
+├── docs/               # Technical documentation
 ├── public/             # Static files like images
 ├── src/                # ⭐️ YOUR CODE LIVES HERE
-│   ├── assets/         # Images and fonts
-│   ├── FinanceApp.jsx  # The MAIN file containing the entire app logic
-│   ├── main.jsx        # The entry point that mounts React to the HTML
-│   └── index.css       # Global styles and Tailwind setup
-├── index.html          # The main HTML file
-├── package.json        # Project settings and list of dependencies
-└── vite.config.js      # Configuration for Vite
+│   ├── components/     # Reusable UI components
+│   ├── hooks/          # Business logic and state (Custom Hooks)
+│   ├── services/       # Database & API interaction (Supabase)
+│   ├── constants/      # Shared values and settings
+│   ├── FinanceApp.jsx  # Root application container
+│   ├── main.jsx        # Entry point
+│   └── index.css       # Global styles
+├── index.html          # Main HTML
+└── package.json        # Project settings & configuration
 ```
 
 ---
