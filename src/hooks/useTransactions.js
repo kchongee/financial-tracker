@@ -1,25 +1,30 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { transactionService } from '../services/transactionService';
 
 export function useTransactions(currentDate, selectedDate) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await transactionService.fetchAll();
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const startOfMonth = new Date(year, month, 1).toISOString();
+      const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+
+      const data = await transactionService.fetchRange(startOfMonth, endOfMonth);
       setTransactions(data);
     } catch (error) {
       console.error('Error fetching transactions:', error.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentDate]);
 
   useEffect(() => {
     fetchTransactions();
-  }, []);
+  }, [fetchTransactions]);
 
   const filteredTransactions = useMemo(() => {
     let filtered = transactions;
@@ -52,14 +57,38 @@ export function useTransactions(currentDate, selectedDate) {
   }, [transactions, currentDate]);
 
   const addTransaction = async (transaction) => {
-    const newTx = await transactionService.add(transaction);
-    setTransactions(prev => [newTx, ...prev]);
-    return newTx;
+    const tempId = Date.now();
+    const optimisticTx = { ...transaction, id: tempId, isOptimistic: true };
+
+    // Optimistic Update
+    setTransactions(prev => [optimisticTx, ...prev]);
+
+    try {
+      const newTx = await transactionService.add(transaction);
+      // Replace optimistic item with real one
+      setTransactions(prev => prev.map(t => t.id === tempId ? newTx : t));
+      return newTx;
+    } catch (error) {
+      // Rollback
+      setTransactions(prev => prev.filter(t => t.id !== tempId));
+      throw error;
+    }
   };
 
   const deleteTransaction = async (id) => {
-    await transactionService.delete(id);
+    const transactionToRestore = transactions.find(t => t.id === id);
+    if (!transactionToRestore) return;
+
+    // Optimistic Update
     setTransactions(prev => prev.filter(t => t.id !== id));
+
+    try {
+      await transactionService.delete(id);
+    } catch (error) {
+      // Rollback
+      setTransactions(prev => [transactionToRestore, ...prev].sort((a, b) => new Date(b.date) - new Date(a.date)));
+      throw error;
+    }
   };
 
   const bulkAddTransactions = async (newTransactions) => {

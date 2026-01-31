@@ -10,6 +10,17 @@ export const transactionService = {
     return data || [];
   },
 
+  async fetchRange(startDate, endDate) {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
   async add(transaction) {
     const { data, error } = await supabase
       .from('transactions')
