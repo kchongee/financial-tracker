@@ -11,8 +11,10 @@ import {
   PieChart,
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Trash2
 } from 'lucide-react';
+import { supabase } from './supabaseClient';
 
 // --- Constants & Mock Data ---
 
@@ -26,17 +28,19 @@ const CATEGORIES = [
   { id: 'savings', name: 'Savings', color: 'bg-green-500' },
   { id: 'investments', name: 'Investments', color: 'bg-indigo-500' },
   { id: 'giving', name: 'Giving', color: 'bg-pink-500' },
+  { id: 'buffer', name: 'Buffer', color: 'bg-amber-500' },
   { id: 'income', name: 'Income', color: 'bg-slate-500' }, // For income transactions
 ];
 
 // 6 Jar Method Configuration
 const JAR_CONFIG = [
-  { id: 'necessities', name: 'Necessities', percentage: 0.55, color: 'bg-blue-500' },
-  { id: 'financial_freedom', name: 'Financial Freedom', percentage: 0.10, color: 'bg-indigo-500' },
-  { id: 'education', name: 'Education', percentage: 0.10, color: 'bg-purple-500' },
-  { id: 'long_term_savings', name: 'Long-Term Savings', percentage: 0.10, color: 'bg-green-500' },
-  { id: 'play', name: 'Play', percentage: 0.10, color: 'bg-rose-500' },
-  { id: 'give', name: 'Give', percentage: 0.05, color: 'bg-pink-500' },
+  { id: 'necessities', name: 'Necessities', percentage: 0.40, color: 'bg-blue-500' },
+  { id: 'investments', name: 'Investments (INV)', percentage: 0.22, color: 'bg-indigo-500' },
+  { id: 'long_term_savings', name: 'Long-Term Savings (LTSS)', percentage: 0.11, color: 'bg-green-500' },
+  { id: 'education', name: 'Education (EDU)', percentage: 0.13, color: 'bg-purple-500' },
+  { id: 'play', name: 'Play (FUN)', percentage: 0.05, color: 'bg-rose-500' },
+  { id: 'give', name: 'Give', percentage: 0.03, color: 'bg-pink-500' },
+  { id: 'buffer', name: 'Buffer', percentage: 0.06, color: 'bg-amber-500' },
 ];
 
 const CATEGORY_TO_JAR_MAPPING = {
@@ -47,8 +51,9 @@ const CATEGORY_TO_JAR_MAPPING = {
   fun: 'play',
   education: 'education',
   savings: 'long_term_savings',
-  investments: 'financial_freedom',
+  investments: 'investments',
   giving: 'give',
+  buffer: 'buffer',
 };
 
 const INITIAL_TRANSACTIONS = [
@@ -185,7 +190,36 @@ const CategoryChart = ({ transactions }) => {
   );
 };
 
-const JarAllocation = ({ monthlyIncome, transactions }) => {
+const JarAllocation = ({ monthlyIncome, transactions, onSweep, currentDate }) => {
+  const prevMonthData = useMemo(() => {
+    const prevMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    const year = prevMonth.getFullYear();
+    const month = prevMonth.getMonth();
+
+    const prevTransactions = transactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getFullYear() === year && d.getMonth() === month;
+    });
+
+    const income = prevTransactions
+      .filter(t => t.type === 'income' && !t.description.includes('Buffer Sweep'))
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const bufferTarget = income * 0.06;
+    const bufferSpent = prevTransactions
+      .filter(t => t.type === 'expense' && CATEGORY_TO_JAR_MAPPING[t.category] === 'buffer')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const leftover = Math.max(0, bufferTarget - bufferSpent);
+
+    // Check if already swept
+    const isAlreadySwept = transactions.some(t =>
+      t.description.includes(`Buffer Sweep from ${prevMonth.toLocaleString('default', { month: 'short' })}`)
+    );
+
+    return { leftover, isAlreadySwept, monthName: prevMonth.toLocaleString('default', { month: 'long' }) };
+  }, [transactions, currentDate]);
+
   const jarAllocations = useMemo(() => {
     // Calculate spending per jar and track category breakdowns
     const jarData = {};
@@ -194,7 +228,10 @@ const JarAllocation = ({ monthlyIncome, transactions }) => {
     });
 
     transactions
-      .filter(t => t.type === 'expense')
+      .filter(t => {
+        const d = new Date(t.date);
+        return d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear() && t.type === 'expense';
+      })
       .forEach(t => {
         const jarId = CATEGORY_TO_JAR_MAPPING[t.category];
         if (jarId) {
@@ -225,14 +262,24 @@ const JarAllocation = ({ monthlyIncome, transactions }) => {
         categories: categoryBreakdown,
       };
     });
-  }, [monthlyIncome, transactions]);
+  }, [monthlyIncome, transactions, currentDate]);
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-medium text-slate-700 flex items-center gap-2">
-        <PieChart size={16} />
-        6 Jar Allocation
-      </h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-slate-700 flex items-center gap-2">
+          <PieChart size={16} />
+          6 Jar Allocation
+        </h3>
+        {prevMonthData.leftover > 0 && !prevMonthData.isAlreadySwept && (
+          <button
+            onClick={() => onSweep(prevMonthData.leftover, prevMonthData.monthName)}
+            className="text-[10px] bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold hover:bg-amber-200 transition-colors"
+          >
+            Sweep ${prevMonthData.leftover.toFixed(0)} from {prevMonthData.monthName}
+          </button>
+        )}
+      </div>
       <div className="space-y-3">
         {jarAllocations.map(jar => (
           <div key={jar.id}>
@@ -362,9 +409,10 @@ const Calendar = ({ transactions, selectedDate, onSelectDate, currentDate, onPre
 // --- Main Component ---
 
 export default function FinanceApp() {
-  const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(null);
-  const [currentDate, setCurrentDate] = useState(new Date('2026-01-01')); // Start with mock data month
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [activeTab, setActiveTab] = useState('category');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [newTx, setNewTx] = useState({
@@ -375,17 +423,49 @@ export default function FinanceApp() {
     date: new Date().toISOString().split('T')[0]
   });
 
+  // Fetch transactions on mount
+  React.useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+      setTransactions(data || []);
+    } catch (error) {
+      console.error('Error fetching transactions:', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Derived State
   const filteredTransactions = useMemo(() => {
+    let filtered = transactions;
+
     if (selectedDate) {
-      return transactions.filter(t => t.date === selectedDate);
+      filtered = transactions.filter(t => t.date === selectedDate);
+    } else {
+      // Filter by current month view if no specific date selected
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      filtered = transactions.filter(t => {
+        const d = new Date(t.date);
+        return d.getFullYear() === year && d.getMonth() === month;
+      });
     }
-    // Filter by current month view if no specific date selected
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    return transactions.filter(t => {
-      const d = new Date(t.date);
-      return d.getFullYear() === year && d.getMonth() === month;
+
+    // Sort by date desc, then by id desc for same-day transactions
+    return [...filtered].sort((a, b) => {
+      const dateCompare = new Date(b.date) - new Date(a.date);
+      if (dateCompare !== 0) return dateCompare;
+      return b.id > a.id ? 1 : -1;
     });
   }, [transactions, selectedDate, currentDate]);
 
@@ -425,8 +505,9 @@ export default function FinanceApp() {
 
   const balance = totals.income - totals.expenses;
 
-  // Dynamic budget based on 80% of income (Necessities + Play + Education + Give)
-  const dynamicBudget = totals.income * 0.80;
+  // Dynamic budget based on 54% of income (Necessities + Play + Give + Buffer)
+  // Education (13%), Savings (11%), and Investments (22%) are excluded from "Spending"
+  const dynamicBudget = totals.income * 0.54;
 
   // Month-filtered transactions for CategoryChart
   const monthTransactions = useMemo(() => {
@@ -438,28 +519,123 @@ export default function FinanceApp() {
     });
   }, [transactions, currentDate]);
 
+  // Expenses that count towards the 54% spending allocation
+  const consumptionExpenses = useMemo(() => {
+    return monthTransactions
+      .filter(t => {
+        const jarId = CATEGORY_TO_JAR_MAPPING[t.category];
+        return ['necessities', 'play', 'give', 'buffer'].includes(jarId);
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [monthTransactions]);
+
   // Handlers
-  const handleAddTransaction = (e) => {
+  const handleAddTransaction = async (e) => {
     e.preventDefault();
     if (!newTx.amount || !newTx.description) return;
 
     const transaction = {
-      id: Date.now(),
-      ...newTx,
       amount: parseFloat(newTx.amount),
-      // Auto-set category to income if type is income
-      category: newTx.type === 'income' ? 'income' : newTx.category
+      description: newTx.description,
+      category: newTx.type === 'income' ? 'income' : newTx.category,
+      type: newTx.type,
+      date: newTx.date
     };
 
-    setTransactions(prev => [transaction, ...prev]);
-    setIsFormOpen(false);
-    setNewTx({
-      amount: '',
-      description: '',
-      category: 'food',
-      type: 'expense',
-      date: new Date().toISOString().split('T')[0]
-    });
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert([transaction])
+        .select();
+
+      if (error) throw error;
+
+      setTransactions(prev => [data[0], ...prev]);
+      setIsFormOpen(false);
+      setNewTx({
+        amount: '',
+        description: '',
+        category: 'food',
+        type: 'expense',
+        date: new Date().toISOString().split('T')[0]
+      });
+    } catch (error) {
+      console.error('Error adding transaction:', error.message);
+      alert('Failed to add transaction. Check your Supabase connection.');
+    }
+  };
+
+  const handleDeleteTransaction = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      setTransactions(prev => prev.filter(t => t.id !== id));
+    } catch (error) {
+      console.error('Error deleting transaction:', error.message);
+      alert('Failed to delete transaction.');
+    }
+  };
+
+  const handleSweepBuffer = async (amount, monthName) => {
+    if (!window.confirm(`Sweep $${amount.toFixed(2)} from ${monthName} Buffer and reallocate?`)) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const sweepTransactions = [
+      // 1. Empty the buffer from previous month (as an expense)
+      {
+        amount: amount,
+        description: `Buffer Sweep from ${monthName.substring(0, 3)} (Out)`,
+        category: 'buffer',
+        type: 'expense',
+        date: today
+      },
+      // 2. Reallocate to INV (50%)
+      {
+        amount: amount * 0.5,
+        description: `Buffer Sweep from ${monthName.substring(0, 3)} (to INV)`,
+        category: 'investments',
+        type: 'income',
+        date: today
+      },
+      // 3. Reallocate to LTSS (30%)
+      {
+        amount: amount * 0.3,
+        description: `Buffer Sweep from ${monthName.substring(0, 3)} (to LTSS)`,
+        category: 'savings',
+        type: 'income',
+        date: today
+      },
+      // 4. Reallocate to FUN (20%)
+      {
+        amount: amount * 0.2,
+        description: `Buffer Sweep from ${monthName.substring(0, 3)} (to FUN)`,
+        category: 'fun',
+        type: 'income',
+        date: today
+      }
+    ];
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert(sweepTransactions)
+        .select();
+
+      if (error) throw error;
+      setTransactions(prev => [...data, ...prev]);
+    } catch (error) {
+      console.error('Error sweeping buffer:', error.message);
+      alert('Failed to sweep buffer.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -514,9 +690,6 @@ export default function FinanceApp() {
           {/* Left Column: Stats & Calendar */}
           <div className="space-y-6">
             <Card>
-              <ProgressBar current={totals.expenses} max={dynamicBudget} label="Spending Allocation (80%)" />
-            </Card>
-            <Card>
               <div className="flex p-1 bg-slate-100 rounded-lg mb-6">
                 <button
                   onClick={() => setActiveTab('category')}
@@ -539,9 +712,19 @@ export default function FinanceApp() {
               </div>
 
               {activeTab === 'category' ? (
-                <CategoryChart transactions={monthTransactions} />
+                <div className="space-y-6">
+                  <ProgressBar current={consumptionExpenses} max={dynamicBudget} label="Spending Allocation (54%)" />
+                  <div className="border-t border-slate-100 pt-6">
+                    <CategoryChart transactions={monthTransactions} />
+                  </div>
+                </div>
               ) : (
-                <JarAllocation monthlyIncome={totals.income} transactions={monthTransactions} />
+                <JarAllocation
+                  monthlyIncome={totals.income}
+                  transactions={transactions}
+                  onSweep={handleSweepBuffer}
+                  currentDate={currentDate}
+                />
               )}
             </Card>
             <Card>
@@ -575,27 +758,60 @@ export default function FinanceApp() {
               </div>
 
               <div className="space-y-4">
-                {filteredTransactions.length === 0 ? (
+                {loading ? (
+                  <div className="text-center py-12 text-slate-400">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mx-auto mb-4"></div>
+                    <p>Loading transactions...</p>
+                  </div>
+                ) : filteredTransactions.length === 0 ? (
                   <div className="text-center py-12 text-slate-400">
                     <p>No transactions found for this period.</p>
                   </div>
                 ) : (
-                  filteredTransactions.map(t => (
-                    <div key={t.id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100 group">
-                      <div className="flex items-center gap-4">
-                        <div className={`p-2 rounded-full ${t.type === 'income' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                          {t.type === 'income' ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
+                  filteredTransactions.map(t => {
+                    const jarId = CATEGORY_TO_JAR_MAPPING[t.category];
+                    const isWealth = ['investments', 'long_term_savings', 'education'].includes(jarId);
+                    const isIncome = t.type === 'income';
+
+                    let iconBg = 'bg-rose-100 text-rose-600';
+                    let amountColor = 'text-slate-900';
+
+                    if (isIncome) {
+                      iconBg = 'bg-emerald-100 text-emerald-600';
+                      amountColor = 'text-emerald-600';
+                    } else if (isWealth) {
+                      iconBg = 'bg-blue-100 text-blue-600';
+                    }
+
+                    return (
+                      <div key={t.id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100 group">
+                        <div className="flex items-center gap-4">
+                          <div className={`p-2 rounded-full ${iconBg}`}>
+                            {isIncome ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900">{t.description}</p>
+                            <p className="text-xs text-slate-500 capitalize">
+                              {t.category}
+                              {isWealth && <span className="ml-2 text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Wealth</span>}
+                              • {t.date}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-slate-900">{t.description}</p>
-                          <p className="text-xs text-slate-500 capitalize">{t.category} • {t.date}</p>
+                        <div className="flex items-center gap-4">
+                          <span className={`font-bold ${amountColor}`}>
+                            {isIncome ? '+' : '-'}${t.amount.toLocaleString()}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteTransaction(t.id)}
+                            className="p-2 text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       </div>
-                      <span className={`font-bold ${t.type === 'income' ? 'text-emerald-600' : 'text-slate-900'}`}>
-                        {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}
-                      </span>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </Card>
