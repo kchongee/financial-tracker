@@ -1,6 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
-import { useFinanceStore, selectFilteredTransactions, selectMonthTransactions } from './store/useFinanceStore';
+import { useShallow } from 'zustand/react/shallow';
+import {
+  useFinanceStore,
+  selectFilteredTransactions,
+  selectMonthTransactions,
+  selectBaseState,
+  selectActions
+} from './store/useFinanceStore';
 import { useFinanceCalculations } from './hooks/useFinanceCalculations';
 
 // Components
@@ -21,20 +28,22 @@ export default function FinanceApp() {
     loading,
     categories,
     jarConfig,
-    categoryToJarMapping,
+    categoryToJarMapping
+  } = useFinanceStore(useShallow(selectBaseState));
+
+  const {
     fetchTransactions,
     addTransaction,
     deleteTransaction,
     bulkAddTransactions,
-    setCurrentDate,
-    setSelectedDate,
     nextMonth,
     prevMonth,
-    goToday
-  } = useFinanceStore();
+    goToday,
+    setSelectedDate
+  } = useFinanceStore(useShallow(selectActions));
 
-  const filteredTransactions = useFinanceStore(selectFilteredTransactions);
-  const monthTransactions = useFinanceStore(selectMonthTransactions);
+  const filteredTransactions = useFinanceStore(useShallow(selectFilteredTransactions));
+  const monthTransactions = useFinanceStore(useShallow(selectMonthTransactions));
 
   const [activeTab, setActiveTab] = useState('category');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -47,7 +56,7 @@ export default function FinanceApp() {
   });
 
   // Fetch transactions on mount and when currentDate changes
-  React.useEffect(() => {
+  useEffect(() => {
     fetchTransactions();
   }, [fetchTransactions, currentDate]);
 

@@ -141,22 +141,38 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 }));
 
 // Selectors
+export const selectBaseState = (state: FinanceState) => ({
+  currentDate: state.currentDate,
+  selectedDate: state.selectedDate,
+  loading: state.loading,
+  categories: state.categories,
+  jarConfig: state.jarConfig,
+  categoryToJarMapping: state.categoryToJarMapping,
+});
+
+export const selectActions = (state: FinanceState) => ({
+  fetchTransactions: state.fetchTransactions,
+  addTransaction: state.addTransaction,
+  deleteTransaction: state.deleteTransaction,
+  bulkAddTransactions: state.bulkAddTransactions,
+  nextMonth: state.nextMonth,
+  prevMonth: state.prevMonth,
+  goToday: state.goToday,
+  setSelectedDate: state.setSelectedDate,
+});
+
 export const selectFilteredTransactions = (state: FinanceState) => {
   const { transactions, selectedDate, currentDate } = state;
-  let filtered = transactions;
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
 
-  if (selectedDate) {
-    filtered = transactions.filter(t => t.date === selectedDate);
-  } else {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    filtered = transactions.filter(t => {
-      const d = new Date(t.date);
-      return d.getFullYear() === year && d.getMonth() === month;
-    });
-  }
+  const filtered = transactions.filter(t => {
+    if (selectedDate) return t.date === selectedDate;
+    const d = new Date(t.date);
+    return d.getFullYear() === year && d.getMonth() === month;
+  });
 
-  return [...filtered].sort((a, b) => {
+  return filtered.sort((a, b) => {
     const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
     if (dateCompare !== 0) return dateCompare;
     return b.id > a.id ? 1 : -1;
